@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ros_vision</name>
+  <version>0.1.0</version>
+  <description>
+    Low-latency FRC vision system for Jetson Orin Nano Super.
+    Uses NVIDIA Isaac ROS AprilTag (CUDA-accelerated) for tag detection,
+    implements PhotonVision-like coordinate conventions, and publishes
+    pipeline results to NetworkTables 4 (WPILib NT4) for robot consumption.
+
+    Upstream: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_apriltag
+  </description>
+  <maintainer email="team@example.com">FRC Team</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- ROS 2 core -->
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>cv_bridge</depend>
+
+  <!--
+    NVIDIA Isaac ROS AprilTag — REQUIRED.
+    CUDA-accelerated AprilTag detector that runs on the Jetson Orin Nano Super
+    DLA/GPU.  Install following the guide at:
+    https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_apriltag/
+  -->
+  <depend>isaac_ros_apriltag_interfaces</depend>
+
+  <!-- CMake helper for Eigen3 -->
+  <build_depend>eigen3_cmake_module</build_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

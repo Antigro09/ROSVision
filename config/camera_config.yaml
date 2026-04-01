@@ -1,0 +1,70 @@
+# camera_config.yaml
+# ============================================================
+# Sample parameter file for the ros_vision vision_node.
+# Launch with:
+#   ros2 run ros_vision vision_node --ros-args --params-file config/camera_config.yaml
+# or via a launch file.
+# ============================================================
+
+/vision_node:
+  ros__parameters:
+
+    # --------------------------------------------------------
+    # Field layout
+    # --------------------------------------------------------
+    # Absolute or package-relative path to the field layout JSON.
+    # Use $(find-pkg-share ros_vision)/config/field_layout.json in
+    # a launch file for the installed path.
+    field_layout_path: "/opt/ros_vision/config/field_layout.json"
+
+    # --------------------------------------------------------
+    # AprilTag physical size
+    # --------------------------------------------------------
+    # Side length of the tag in metres.
+    # 2024 FRC Crescendo: 6.50 inches = 0.1651 m
+    tag_size_metres: 0.1651
+
+    # --------------------------------------------------------
+    # Isaac ROS AprilTag detection topic
+    # --------------------------------------------------------
+    # Topic published by the isaac_ros_apriltag_node.
+    # Default output topic from the NVIDIA node is /apriltag/detection_array.
+    detection_topic: "/apriltag/detection_array"
+
+    # --------------------------------------------------------
+    # Camera → Robot rigid transform
+    # --------------------------------------------------------
+    # Position of the camera optical centre relative to the robot origin,
+    # expressed in the robot body frame (WPILib NWU: +x forward, +y left, +z up).
+    # Units: metres and degrees.
+    #
+    # Example: camera mounted 30 cm forward, 15 cm left, 60 cm up,
+    #          tilted 15° downward (negative pitch).
+    cam_robot.x:     0.30
+    cam_robot.y:     0.15
+    cam_robot.z:     0.60
+    cam_robot.roll:  0.0
+    cam_robot.pitch: -15.0
+    cam_robot.yaw:   0.0
+
+    # --------------------------------------------------------
+    # NetworkTables 4 (WPILib)
+    # --------------------------------------------------------
+    # Connect to a RoboRIO by team number OR explicit IP address.
+    # Leave both blank to run as an NT server (useful for desktop testing).
+    #
+    # Option A — team number (recommended on-robot):
+    #   nt.team_number: 1234
+    #
+    # Option B — explicit server address:
+    #   nt.server_address: "10.12.34.2"
+    #
+    # Option C — NT server mode (for testing without a RoboRIO):
+    #   nt.team_number: 0
+    #   nt.server_address: ""
+
+    nt.server_address: ""
+    nt.team_number:    0
+    nt.client_name:    "ROSVision"
+    nt.port:           5810
+    nt.root_table:     "/Vision"
