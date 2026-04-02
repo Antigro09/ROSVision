@@ -330,8 +330,7 @@ Controls:
 - Press `q` or `Esc` to quit.
 
 Persistence behavior:
-- Every change is auto-saved immediately to:
-  `~/.config/rosvision/camera_calibration_profile.json`
+- Every change is auto-saved immediately to `~/.config/rosvision/camera_calibration_profile.json`.
 - On next launch, settings are auto-loaded for that camera device.
 - Because settings are saved on disk, they persist across full device reboots.
 

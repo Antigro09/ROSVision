@@ -37,6 +37,7 @@ DASHBOARD_W = 1600
 DASHBOARD_H = 900
 CONTROL_H = 560
 CONTROL_Y = DASHBOARD_H - CONTROL_H
+MAX_TEAM_NUMBER = 9999
 
 PIPELINE_TYPES = ["AprilTag"]
 PROCESSING_MODES = ["2D", "3D"]
@@ -150,14 +151,14 @@ def get_capture_settings(cap: cv2.VideoCapture) -> tuple[int, int, float]:
     return int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), cap.get(cv2.CAP_PROP_FPS)
 
 
-def put_line(img: np.ndarray, text: str, x: int, y: int, scale: float = 0.52, color: tuple[int, int, int] = (225, 235, 245)) -> None:
+def put_text(img: np.ndarray, text: str, x: int, y: int, scale: float = 0.52, color: tuple[int, int, int] = (225, 235, 245)) -> None:
     cv2.putText(img, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, scale, color, 1, cv2.LINE_AA)
 
 
 def draw_panel(img: np.ndarray, x: int, y: int, w: int, h: int, title: str) -> None:
     cv2.rectangle(img, (x, y), (x + w, y + h), (60, 78, 96), 1)
     cv2.rectangle(img, (x, y), (x + w, y + 30), (35, 52, 69), -1)
-    put_line(img, title, x + 10, y + 20, 0.55, (245, 250, 255))
+    put_text(img, title, x + 10, y + 20, 0.55, (245, 250, 255))
 
 
 def draw_dashboard(
@@ -174,11 +175,11 @@ def draw_dashboard(
 
     # Header strip
     cv2.rectangle(canvas, (0, 0), (DASHBOARD_W, 58), (18, 24, 30), -1)
-    put_line(canvas, "Cameras", 14, 35, 0.75, (255, 255, 255))
-    put_line(canvas, f"{fps_actual:.1f} FPS", 180, 35, 0.6, (150, 230, 150))
-    put_line(canvas, f"{latency_ms:.1f} ms latency", 295, 35, 0.6, (200, 220, 255))
-    put_line(canvas, f"Team #{config['team_number']}", 510, 35, 0.6, (245, 245, 180))
-    put_line(canvas, f"Status: {status_text}", 690, 35, 0.5, (255, 210, 160))
+    put_text(canvas, "Cameras", 14, 35, 0.75, (255, 255, 255))
+    put_text(canvas, f"{fps_actual:.1f} FPS", 180, 35, 0.6, (150, 230, 150))
+    put_text(canvas, f"{latency_ms:.1f} ms latency", 295, 35, 0.6, (200, 220, 255))
+    put_text(canvas, f"Team #{config['team_number']}", 510, 35, 0.6, (245, 245, 180))
+    put_text(canvas, f"Status: {status_text}", 690, 35, 0.5, (255, 210, 160))
 
     # Stream region
     stream_x, stream_y, stream_w, stream_h = 16, 70, 1020, 580
@@ -194,27 +195,27 @@ def draw_dashboard(
     # Right side info panels
     panel_x = 1050
     draw_panel(canvas, panel_x, 70, 535, 180, "Camera")
-    put_line(canvas, f"Nickname: {config['camera_nickname']}", panel_x + 14, 108)
-    put_line(canvas, f"Device: {config['device_label']}", panel_x + 14, 132)
-    put_line(canvas, f"Camera Type: {CAMERA_TYPES[config['camera_type_idx']]}", panel_x + 14, 156)
-    put_line(canvas, f"Resolution: {config['capture_width']}x{config['capture_height']} @ {config['capture_fps']} FPS", panel_x + 14, 180)
-    put_line(canvas, f"Stream Resolution: {config['stream_width']}x{config['stream_height']}", panel_x + 14, 204)
+    put_text(canvas, f"Nickname: {config['camera_nickname']}", panel_x + 14, 108)
+    put_text(canvas, f"Device: {config['device_label']}", panel_x + 14, 132)
+    put_text(canvas, f"Camera Type: {CAMERA_TYPES[config['camera_type_idx']]}", panel_x + 14, 156)
+    put_text(canvas, f"Resolution: {config['capture_width']}x{config['capture_height']} @ {config['capture_fps']} FPS", panel_x + 14, 180)
+    put_text(canvas, f"Stream Resolution: {config['stream_width']}x{config['stream_height']}", panel_x + 14, 204)
 
     draw_panel(canvas, panel_x, 260, 535, 220, "Pipeline")
-    put_line(canvas, f"Pipeline: {config['pipeline_index']}", panel_x + 14, 298)
-    put_line(canvas, f"Type: {PIPELINE_TYPES[config['pipeline_type_idx']]}", panel_x + 14, 322)
-    put_line(canvas, f"Processing Mode: {PROCESSING_MODES[config['processing_mode_idx']]}", panel_x + 14, 346)
-    put_line(canvas, f"Decimate: {config['decimate']}", panel_x + 14, 370)
-    put_line(canvas, f"Enable MultiTag: {'ON' if config['multitag_enabled'] else 'OFF'}", panel_x + 14, 394)
-    put_line(canvas, f"Orientation: {ORIENTATIONS[config['orientation_idx']]}", panel_x + 14, 418)
-    put_line(canvas, f"Low Latency Mode: {'ON' if controls.get('low_latency_mode', 0) else 'OFF'}", panel_x + 14, 442)
-    put_line(canvas, "Auto/Manual values use control sliders below.", panel_x + 14, 466, 0.46, (180, 200, 220))
+    put_text(canvas, f"Pipeline: {config['pipeline_index']}", panel_x + 14, 298)
+    put_text(canvas, f"Type: {PIPELINE_TYPES[config['pipeline_type_idx']]}", panel_x + 14, 322)
+    put_text(canvas, f"Processing Mode: {PROCESSING_MODES[config['processing_mode_idx']]}", panel_x + 14, 346)
+    put_text(canvas, f"Decimate: {config['decimate']}", panel_x + 14, 370)
+    put_text(canvas, f"Enable MultiTag: {'ON' if config['multitag_enabled'] else 'OFF'}", panel_x + 14, 394)
+    put_text(canvas, f"Orientation: {ORIENTATIONS[config['orientation_idx']]}", panel_x + 14, 418)
+    put_text(canvas, f"Low Latency Mode: {'ON' if controls.get('low_latency_mode', 0) else 'OFF'}", panel_x + 14, 442)
+    put_text(canvas, "Auto/Manual values use control sliders below.", panel_x + 14, 466, 0.46, (180, 200, 220))
 
     draw_panel(canvas, panel_x, 490, 535, 160, "3D Mode Output")
-    put_line(canvas, "ID    X-meters    Y-meters    Z-angle theta    Ambiguity", panel_x + 12, 524, 0.44, (210, 235, 255))
+    put_text(canvas, "ID    X-meters    Y-meters    Z-angle theta    Ambiguity", panel_x + 12, 524, 0.44, (210, 235, 255))
     row_y = 548
     for row in mode3d_rows[:4]:
-        put_line(
+        put_text(
             canvas,
             f"{row['id']:>2}    {row['x']:>7.3f}      {row['y']:>7.3f}        {row['theta']:>7.2f} deg      {row['ambiguity']:>5.3f}",
             panel_x + 12,
@@ -225,7 +226,7 @@ def draw_dashboard(
         row_y += 24
 
     # Footer text for settings names requested
-    put_line(
+    put_text(
         canvas,
         "Settings shown: Team Number, Camera Nickname, Pipeline/AprilTag, Exposure, Brightness, Camera Gain, Red/Blue AWB, Auto WB, WB Temp, Orientation, Resolution, Stream Resolution",
         16,
@@ -319,6 +320,7 @@ def main() -> int:
             0,
             40,
             int(device_profile.get("controls", {}).get("red_awb_gain", 11)),
+            # Scale slider units up to common UVC control ranges used by many camera drivers.
             apply_prop(cv2.CAP_PROP_WHITE_BALANCE_RED_V, lambda v: float(v * 100)),
         ),
         CameraControl(
@@ -327,6 +329,7 @@ def main() -> int:
             0,
             40,
             int(device_profile.get("controls", {}).get("blue_awb_gain", 20)),
+            # Match red-channel scaling for consistent operator behavior.
             apply_prop(cv2.CAP_PROP_WHITE_BALANCE_BLUE_U, lambda v: float(v * 100)),
         ),
         CameraControl(
@@ -365,19 +368,25 @@ def main() -> int:
     # Meta/settings trackbars
     team_default = int(device_profile.get("team_number", args.team_number))
     decimate_default = int(device_profile.get("decimate", 2))
-    cam_type_default = int(device_profile.get("camera_type_idx", 1))  # OV9281 requested default
+    camera_type_default = int(device_profile.get("camera_type_idx", 1))  # OV9281 requested default
     mode_default = int(device_profile.get("processing_mode_idx", 1))  # 3D requested default
     multitag_default = int(device_profile.get("multitag_enabled", 1))  # enabled default
     orientation_default = int(device_profile.get("orientation_idx", 0))
     pipeline_idx_default = int(device_profile.get("pipeline_index", 0))
 
-    cv2.createTrackbar("Team Number", WINDOW, clamp(team_default, 0, 9999), 9999, lambda _v: None)
+    cv2.createTrackbar("Team Number", WINDOW, clamp(team_default, 0, MAX_TEAM_NUMBER), MAX_TEAM_NUMBER, lambda _v: None)
     cv2.createTrackbar("Pipeline", WINDOW, clamp(pipeline_idx_default, 0, 9), 9, lambda _v: None)
-    cv2.createTrackbar("Type", WINDOW, 0, len(PIPELINE_TYPES) - 1, lambda _v: None)
+    # Only AprilTag is currently supported; keep type fixed to index 0.
     cv2.createTrackbar("Processing Mode", WINDOW, clamp(mode_default, 0, len(PROCESSING_MODES) - 1), len(PROCESSING_MODES) - 1, lambda _v: None)
-    cv2.createTrackbar("Decimate", WINDOW, clamp(decimate_default, 1, 4), 4, lambda _v: None)
+    cv2.createTrackbar("Decimate", WINDOW, clamp(decimate_default, 1, 4) - 1, 3, lambda _v: None)
     cv2.createTrackbar("Enable MultiTag", WINDOW, clamp(multitag_default, 0, 1), 1, lambda _v: None)
-    cv2.createTrackbar("Camera Type", WINDOW, clamp(cam_type_default, 0, len(CAMERA_TYPES) - 1), len(CAMERA_TYPES) - 1, lambda _v: None)
+    cv2.createTrackbar(
+        "Camera Type",
+        WINDOW,
+        clamp(camera_type_default, 0, len(CAMERA_TYPES) - 1),
+        len(CAMERA_TYPES) - 1,
+        lambda _v: None,
+    )
     cv2.createTrackbar("Orientation", WINDOW, clamp(orientation_default, 0, len(ORIENTATIONS) - 1), len(ORIENTATIONS) - 1, lambda _v: None)
     cv2.createTrackbar("Stream Display", WINDOW, int(device_profile.get("stream_display_idx", 0)), len(STREAM_DISPLAYS) - 1, lambda _v: None)
 
@@ -398,6 +407,8 @@ def main() -> int:
     current_stream_res_idx = initial_stream_res_idx
 
     nickname_input = str(device_profile.get("camera_nickname", args.camera_nickname))
+    nickname_edit_mode = False
+    nickname_buffer = nickname_input
     status_text = "Ready (press n to rename camera, s to save YAML, q/esc to quit)"
     last_tick = cv2.getTickCount()
     last_saved_state = None
@@ -449,9 +460,9 @@ def main() -> int:
             "camera_nickname": nickname_input,
             "device_label": str(args.device),
             "pipeline_index": cv2.getTrackbarPos("Pipeline", WINDOW),
-            "pipeline_type_idx": cv2.getTrackbarPos("Type", WINDOW),
+            "pipeline_type_idx": 0,
             "processing_mode_idx": mode_idx,
-            "decimate": max(1, cv2.getTrackbarPos("Decimate", WINDOW)),
+            "decimate": cv2.getTrackbarPos("Decimate", WINDOW) + 1,
             "multitag_enabled": cv2.getTrackbarPos("Enable MultiTag", WINDOW),
             "camera_type_idx": cv2.getTrackbarPos("Camera Type", WINDOW),
             "orientation_idx": cv2.getTrackbarPos("Orientation", WINDOW),
@@ -466,6 +477,7 @@ def main() -> int:
         # Placeholder 3D rows requested for mode output
         mode3d_rows = []
         if mode_idx == 1:
+            # TODO: Replace placeholder values with live 3D tag outputs from the detection pipeline.
             mode3d_rows = [
                 {"id": 1, "x": 0.000, "y": 0.000, "theta": 0.0, "ambiguity": 0.000},
                 {"id": 2, "x": 0.000, "y": 0.000, "theta": 0.0, "ambiguity": 0.000},
@@ -495,16 +507,37 @@ def main() -> int:
             last_saved_state = current_state
 
         key = cv2.waitKey(1) & 0xFF
+        if nickname_edit_mode:
+            if key in (13, 10):  # Enter
+                nickname_input = nickname_buffer.strip() or nickname_input
+                nickname_buffer = nickname_input
+                nickname_edit_mode = False
+                status_text = f"Camera nickname set to '{nickname_input}'"
+                continue
+            elif key in (8, 127):  # Backspace / Delete
+                nickname_buffer = nickname_buffer[:-1]
+                status_text = f"Editing nickname: {nickname_buffer}_"
+                continue
+            elif key == 27:  # Esc cancel edit
+                nickname_edit_mode = False
+                nickname_buffer = nickname_input
+                status_text = "Nickname edit cancelled"
+                continue
+            elif 32 <= key <= 126:
+                if len(nickname_buffer) < 64:
+                    nickname_buffer += chr(key)
+                status_text = f"Editing nickname: {nickname_buffer}_"
+                continue
+            continue
         if key in (27, ord("q")):
             break
         if key == ord("s"):
             save_yaml(save_path, args.device, config, control_values)
             status_text = f"Saved YAML snapshot: {os.fspath(save_path)}"
         if key == ord("n"):
-            entered = input("Enter camera nickname: ").strip()
-            if entered:
-                nickname_input = entered
-                status_text = f"Camera nickname set to '{nickname_input}'"
+            nickname_edit_mode = True
+            nickname_buffer = nickname_input
+            status_text = f"Editing nickname: {nickname_buffer}_ (Enter to save)"
 
     cap.release()
     cv2.destroyAllWindows()
