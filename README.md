@@ -39,8 +39,8 @@ conventions.
                       |  |  vision_node  (this package)              ||
                       |  |                                           ||
                       |  |  * convertDetection()                     ||
-                      |  |    - IPPE_SQUARE solvePnP                 ||
-                      |  |    - ambiguity metric                     ||
+                      |  |    - Isaac ROS GPU pose (default)         ||
+                      |  |    - optional CPU solvePnP refinement     ||
                       |  |    - optical -> WPILib camera frame       ||
                       |  |  * estimateMultiTag()                     ||
                       |  |    - multi-point PnP (SQPNP)              ||
@@ -269,6 +269,7 @@ Key parameters:
 | `field_layout_path` | `""` | Absolute path to WPILib field layout JSON |
 | `tag_size_metres` | `0.1651` | Tag side length in metres (2024 FRC = 6.5 in) |
 | `detection_topic` | `/apriltag/detection_array` | Isaac ROS AprilTag output topic |
+| `use_isaac_single_tag_pose` | `true` | Use Isaac ROS GPU single-tag pose directly; set `false` to force local CPU solvePnP refinement |
 | `cam_robot.x/y/z` | `0` | Camera→robot translation (metres) |
 | `cam_robot.roll/pitch/yaw` | `0` | Camera→robot rotation (degrees) |
 | `nt.team_number` | `0` | WPILib team number (0 = NT server mode) |
@@ -409,6 +410,12 @@ error.  Required keys, numeric ranges, and quaternion norm are all validated.
 `PoseEstimator::estimateSingleTag()` — runs `cv::SOLVEPNP_IPPE_SQUARE` to get
 both pose solutions, computes reprojection error for each, and derives the
 ambiguity ratio (best_error / alt_error in [0, 1]).
+
+By default, `vision_node` uses Isaac ROS AprilTag's GPU-provided single-tag pose
+(`use_isaac_single_tag_pose=true`) for lower CPU load; set the parameter to
+`false` to re-enable local `estimateSingleTag()` refinement. In GPU-pose mode,
+single-tag `bestReprojError` and `ambiguity` are published as `-1.0` (not
+computed), trading those diagnostics for lower per-frame CPU work.
 
 `PoseEstimator::estimateMultiTag()` — collects 3-D tag corner positions from
 the field layout for every detected tag ID, then runs `cv::SOLVEPNP_SQPNP`
