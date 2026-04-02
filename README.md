@@ -287,7 +287,7 @@ ros2 run isaac_ros_apriltag isaac_ros_apriltag_node \
     --ros-args \
     -p tag_family:=36h11 \
     -p size:=0.1651 \
-    -p max_tags:=16
+    -p max_tags:=32
 ```
 
 > Make sure `/image_rect` and `/camera_info` are being published.
