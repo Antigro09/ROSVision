@@ -301,7 +301,35 @@ ros2 run ros_vision vision_node \
     --params-file ~/my_camera_config.yaml
 ```
 
-### 3. One-shot with inline parameters
+### 3. Competition-day camera calibration GUI (quick tuning + persistent save)
+
+Use the built-in GUI to quickly tune camera input settings like exposure, gain,
+brightness, resolution, and FPS.
+
+```bash
+ros2 run ros_vision camera_calibration_gui -- --device 0
+```
+
+Controls:
+- Move sliders to tune camera settings in real time.
+- Press `s` to export a YAML snapshot.
+- Press `q` or `Esc` to quit.
+
+Persistence behavior:
+- Every change is auto-saved immediately to:
+  `~/.config/rosvision/camera_calibration_profile.json`
+- On next launch, settings are auto-loaded for that camera device.
+- Because settings are saved on disk, they persist across full device reboots.
+
+Optional overrides:
+```bash
+ros2 run ros_vision camera_calibration_gui -- \
+    --device /dev/video0 \
+    --save-path ~/camera_calibration.yaml \
+    --profile-path ~/.config/rosvision/camera_calibration_profile.json
+```
+
+### 4. One-shot with inline parameters
 
 ```bash
 ros2 run ros_vision vision_node --ros-args \

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import os
 import sys
 from dataclasses import dataclass
@@ -71,6 +72,20 @@ def parse_device(device: str) -> int | str:
     return int(device) if device.isdigit() else device
 
 
+def load_profile(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def save_profile(path: Path, profile: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(profile, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def save_yaml(path: Path, device: str, width: int, height: int, fps: int, values: dict[str, int]) -> None:
     timestamp = dt.datetime.now().isoformat(timespec="seconds")
     yaml = [
@@ -99,12 +114,21 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default="camera_calibration.yaml",
         help="Output YAML path used when pressing 's'",
     )
+    p.add_argument(
+        "--profile-path",
+        default="~/.config/rosvision/camera_calibration_profile.json",
+        help="Autosave profile path (loaded on startup, saved on every change)",
+    )
     return p
 
 
 def main() -> int:
     args = build_arg_parser().parse_args()
     save_path = Path(args.save_path).resolve()
+    profile_path = Path(args.profile_path).expanduser().resolve()
+    device_key = str(args.device)
+    profile_data = load_profile(profile_path)
+    device_profile = profile_data.get("profiles", {}).get(device_key, {})
 
     cap = cv2.VideoCapture(parse_device(args.device), cv2.CAP_V4L2)
     if not cap.isOpened():
@@ -113,9 +137,12 @@ def main() -> int:
         print(f"ERROR: Could not open camera device '{args.device}'", file=sys.stderr)
         return 1
 
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(args.width))
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(args.height))
-    cap.set(cv2.CAP_PROP_FPS, float(args.fps))
+    initial_width = int(device_profile.get("width", args.width))
+    initial_height = int(device_profile.get("height", args.height))
+    initial_fps = int(device_profile.get("fps", args.fps))
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(initial_width))
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(initial_height))
+    cap.set(cv2.CAP_PROP_FPS, float(initial_fps))
 
     controls: list[CameraControl] = [
         CameraControl(
@@ -179,8 +206,9 @@ def main() -> int:
     cv2.resizeWindow(WINDOW, 1280, 720)
 
     for ctrl in controls:
-        value = ctrl.default_value
-        if ctrl.read_fn is not None:
+        profile_value = device_profile.get("controls", {}).get(ctrl.name)
+        value = int(profile_value) if profile_value is not None else ctrl.default_value
+        if profile_value is None and ctrl.read_fn is not None:
             try:
                 value = ctrl.read_fn(cap)
             except Exception:
@@ -195,16 +223,17 @@ def main() -> int:
         )
 
     current_res_idx = 0
-    current_fps_idx = min(range(len(FPS_PRESETS)), key=lambda i: abs(FPS_PRESETS[i] - args.fps))
+    current_fps_idx = min(range(len(FPS_PRESETS)), key=lambda i: abs(FPS_PRESETS[i] - initial_fps))
     current_res_idx = min(
         range(len(RESOLUTION_PRESETS)),
-        key=lambda i: abs(RESOLUTION_PRESETS[i][0] - args.width) + abs(RESOLUTION_PRESETS[i][1] - args.height),
+        key=lambda i: abs(RESOLUTION_PRESETS[i][0] - initial_width) + abs(RESOLUTION_PRESETS[i][1] - initial_height),
     )
     cv2.createTrackbar("Resolution Preset", WINDOW, current_res_idx, len(RESOLUTION_PRESETS) - 1, lambda _v: None)
     cv2.createTrackbar("FPS Preset", WINDOW, current_fps_idx, len(FPS_PRESETS) - 1, lambda _v: None)
 
-    status_text = "Ready"
+    status_text = f"Loaded persistent profile: {os.fspath(profile_path)}"
     applied_values: dict[str, int] = {}
+    last_saved_state: tuple | None = None
 
     while True:
         res_idx = cv2.getTrackbarPos("Resolution Preset", WINDOW)
@@ -235,11 +264,32 @@ def main() -> int:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps_actual = cap.get(cv2.CAP_PROP_FPS)
+        selected_width, selected_height = RESOLUTION_PRESETS[current_res_idx]
+        selected_fps = FPS_PRESETS[current_fps_idx]
+
+        current_state = (
+            selected_width,
+            selected_height,
+            selected_fps,
+            tuple((k, applied_values[k]) for k in sorted(applied_values.keys())),
+        )
+        if current_state != last_saved_state:
+            profile_data.setdefault("version", 1)
+            profile_data.setdefault("profiles", {})
+            profile_data["profiles"][device_key] = {
+                "width": selected_width,
+                "height": selected_height,
+                "fps": selected_fps,
+                "controls": {k: int(v) for k, v in applied_values.items()},
+            }
+            save_profile(profile_path, profile_data)
+            last_saved_state = current_state
+            status_text = f"Auto-saved profile: {os.fspath(profile_path)}"
 
         overlay_lines = [
             f"Device: {args.device}",
             f"Capture: {width}x{height} @ {fps_actual:.1f} fps",
-            "Keys: [s] save config, [q]/[esc] quit",
+            "Keys: [s] save YAML snapshot, [q]/[esc] quit",
             f"Status: {status_text}",
         ]
 
@@ -258,7 +308,7 @@ def main() -> int:
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = int(round(cap.get(cv2.CAP_PROP_FPS)))
             save_yaml(save_path, args.device, width, height, fps, applied_values)
-            status_text = f"Saved: {os.fspath(save_path)}"
+            status_text = f"Saved YAML snapshot: {os.fspath(save_path)}"
 
     cap.release()
     cv2.destroyAllWindows()
