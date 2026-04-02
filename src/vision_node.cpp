@@ -242,6 +242,7 @@ SingleTagResult VisionNode::convertDetection(
       pose.orientation.z).normalized();
 
     result.best.pose = opticalToPhotonCamera(t_optical);
+    // Metrics are not produced by this path; -1 means "not computed".
     result.best.reprojectionError = -1.0;
     result.ambiguity = -1.0;
     return result;

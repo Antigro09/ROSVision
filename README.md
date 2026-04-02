@@ -413,7 +413,9 @@ ambiguity ratio (best_error / alt_error in [0, 1]).
 
 By default, `vision_node` uses Isaac ROS AprilTag's GPU-provided single-tag pose
 (`use_isaac_single_tag_pose=true`) for lower CPU load; set the parameter to
-`false` to re-enable local `estimateSingleTag()` refinement.
+`false` to re-enable local `estimateSingleTag()` refinement. In GPU-pose mode,
+single-tag `bestReprojError` and `ambiguity` are published as `-1.0` (not
+computed), trading those diagnostics for lower per-frame CPU work.
 
 `PoseEstimator::estimateMultiTag()` — collects 3-D tag corner positions from
 the field layout for every detected tag ID, then runs `cv::SOLVEPNP_SQPNP`
