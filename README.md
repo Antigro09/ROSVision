@@ -301,17 +301,31 @@ ros2 run ros_vision vision_node \
     --params-file ~/my_camera_config.yaml
 ```
 
-### 3. Competition-day camera calibration GUI (quick tuning + persistent save)
+### 3. Competition-day camera calibration GUI (PhotonVision-style dashboard)
 
-Use the built-in GUI to quickly tune camera input settings like exposure, gain,
-brightness, resolution, and FPS.
+Use the built-in styled dashboard to tune camera + pipeline settings quickly on
+competition days.
 
 ```bash
 ros2 run ros_vision camera_calibration_gui -- --device 0
 ```
 
+Dashboard includes:
+- Cameras header with FPS and latency.
+- Processed stream view panel.
+- Camera panel (team number, camera nickname, camera type, resolution, stream resolution).
+- Pipeline panel (AprilTag type, processing mode, decimate, multitag, orientation, low-latency mode).
+- Camera controls: auto exposure, exposure, brightness, camera gain, red/blue AWB gain, auto white balance, white balance temperature.
+- 3D mode output table fields:
+  - ID
+  - X-meters
+  - Y-meters
+  - Z-angle theta
+  - ambiguity ratio
+
 Controls:
-- Move sliders to tune camera settings in real time.
+- Move sliders to tune settings in real time.
+- Press `n` to rename camera nickname.
 - Press `s` to export a YAML snapshot.
 - Press `q` or `Esc` to quit.
 
@@ -325,9 +339,18 @@ Optional overrides:
 ```bash
 ros2 run ros_vision camera_calibration_gui -- \
     --device /dev/video0 \
+    --team-number 1234 \
+    --camera-nickname FrontCam \
     --save-path ~/camera_calibration.yaml \
     --profile-path ~/.config/rosvision/camera_calibration_profile.json
 ```
+
+Recommended AprilTag competition defaults (OV9281 example):
+- Resolution: `1280x800`
+- Decimate: `2`
+- Processing Mode: `3D`
+- MultiTag: enabled
+- Camera Type: `OV9281`
 
 ### 4. One-shot with inline parameters
 
