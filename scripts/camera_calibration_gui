@@ -26,6 +26,11 @@ except ImportError as exc:  # pragma: no cover
     print("ERROR: OpenCV Python bindings are required (python3-opencv).", file=sys.stderr)
     raise SystemExit(1) from exc
 
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover
+    np = None
+
 
 WINDOW = "ROSVision Camera Calibrator"
 RESOLUTION_PRESETS = [
@@ -222,7 +227,6 @@ def main() -> int:
             lambda _v: None,
         )
 
-    current_res_idx = 0
     current_fps_idx = min(range(len(FPS_PRESETS)), key=lambda i: abs(FPS_PRESETS[i] - initial_fps))
     current_res_idx = min(
         range(len(RESOLUTION_PRESETS)),
@@ -259,7 +263,9 @@ def main() -> int:
         ok, frame = cap.read()
         if not ok:
             status_text = "Camera frame read failed"
-            frame = 255 * (0 * cv2.UMat(480, 640, cv2.CV_8UC3)).get()
+            if np is None:
+                break
+            frame = 255 * np.ones((480, 640, 3), dtype=np.uint8)
 
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
