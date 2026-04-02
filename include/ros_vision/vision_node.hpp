@@ -101,6 +101,7 @@ private:
   // Parameters
   std::string       field_layout_path_;
   std::string       detection_topic_{"/apriltag/detection_array"};
+  bool              use_isaac_single_tag_pose_{true};
   double            tag_size_metres_{0.1651};
   Transform3d       cam_robot_transform_;
   NtPublisherConfig nt_config_;

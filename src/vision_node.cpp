@@ -12,7 +12,7 @@
 //  1. isaac_ros_apriltag detects tags on the GPU and publishes
 //     AprilTagDetectionArray on <detection_topic>.
 //  2. onDetections() converts each detection to a SingleTagResult:
-//       - re-runs solvePnP (for ambiguity + reprojection error)
+//       - uses Isaac ROS GPU pose by default (optional CPU solvePnP refinement)
 //       - converts tag pose from optical frame → WPILib camera frame
 //  3. If ≥ 2 tags are visible and the field layout is loaded, a multi-tag
 //     PnP solve is performed to get the robot's field pose.
@@ -65,8 +65,10 @@ VisionNode::VisionNode(const rclcpp::NodeOptions & options)
   initPublisher();
 
   RCLCPP_INFO(this->get_logger(),
-    "VisionNode started. Listening for Isaac ROS AprilTag detections on '%s'",
-    detection_topic_.c_str());
+    "VisionNode started. Listening for Isaac ROS AprilTag detections on '%s' "
+    "(single_tag_pose=%s)",
+    detection_topic_.c_str(),
+    use_isaac_single_tag_pose_ ? "isaac_gpu" : "cpu_refine");
 }
 
 // ---------------------------------------------------------------------------
@@ -105,6 +107,12 @@ void VisionNode::loadParameters()
   // Topic published by isaac_ros_apriltag.
   this->declare_parameter<std::string>("detection_topic", "/apriltag/detection_array");
   detection_topic_ = this->get_parameter("detection_topic").as_string();
+
+  // Single-tag pose source:
+  //  true  -> use Isaac ROS GPU pose directly (lowest CPU load).
+  //  false -> re-run local CPU solvePnP for ambiguity/reprojection metrics.
+  this->declare_parameter<bool>("use_isaac_single_tag_pose", true);
+  use_isaac_single_tag_pose_ = this->get_parameter("use_isaac_single_tag_pose").as_bool();
 
   // Camera→robot transform (translation in metres, rotation as RPY in degrees).
   this->declare_parameter<double>("cam_robot.x",    0.0);
@@ -219,23 +227,36 @@ SingleTagResult VisionNode::convertDetection(
   // ---- Centre pixel ----
   result.center = {det.center.x, det.center.y};
 
-  if (!estimator_) {
-    // Camera intrinsics not yet received; return result with no pose.
-    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-      "Camera info not yet received; skipping solvePnP for tag %d", det.id);
+  // ---- Primary path: use Isaac ROS GPU pose directly ----
+  if (use_isaac_single_tag_pose_) {
+    const auto & pose = det.pose.pose.pose;
+    Transform3d t_optical;
+    t_optical.translation = Eigen::Vector3d(
+      pose.position.x,
+      pose.position.y,
+      pose.position.z);
+    t_optical.rotation = Eigen::Quaterniond(
+      pose.orientation.w,
+      pose.orientation.x,
+      pose.orientation.y,
+      pose.orientation.z).normalized();
+
+    result.best.pose = opticalToPhotonCamera(t_optical);
+    result.best.reprojectionError = -1.0;
+    result.ambiguity = -1.0;
     return result;
   }
 
-  // ---- Re-run solvePnP for ambiguity and reprojection error ----
-  // Isaac ROS already provides a pose estimate via its internal GPU solver,
-  // but running IPPE_SQUARE via our PoseEstimator gives us:
-  //   - Ambiguity metric (ratio of the two IPPE solution errors).
-  //   - Both candidate pose solutions for the consumer to select.
-  //   - Consistent WPILib camera-frame output.
+  // ---- Optional fallback: re-run CPU solvePnP ----
+  if (!estimator_) {
+    // Camera intrinsics not yet received; return result with no pose.
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+      "Camera info not yet received; skipping CPU solvePnP for tag %d", det.id);
+    return result;
+  }
+
   result = estimator_->estimateSingleTag(det.id, result.corners);
-  // Override center with Isaac ROS GPU-detected centroid rather than the
-  // corner-average computed inside estimateSingleTag; the GPU-detected
-  // centroid is typically sub-pixel accurate.
+  // Keep Isaac ROS GPU-detected centroid rather than corner average.
   result.center = {det.center.x, det.center.y};
 
   return result;

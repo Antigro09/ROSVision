@@ -30,6 +30,10 @@
     # Topic published by the isaac_ros_apriltag_node.
     # Default output topic from the NVIDIA node is /apriltag/detection_array.
     detection_topic: "/apriltag/detection_array"
+    # Use Isaac ROS GPU-computed single-tag pose directly (recommended for
+    # lowest CPU usage). Set false to re-run local CPU solvePnP and compute
+    # ambiguity/reprojection metrics.
+    use_isaac_single_tag_pose: true
 
     # --------------------------------------------------------
     # Camera → Robot rigid transform
