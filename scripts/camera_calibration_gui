@@ -28,8 +28,9 @@ except ImportError as exc:  # pragma: no cover
 
 try:
     import numpy as np
-except ImportError:  # pragma: no cover
-    np = None
+except ImportError as exc:  # pragma: no cover
+    print("ERROR: numpy is required for fallback frame creation.", file=sys.stderr)
+    raise SystemExit(1) from exc
 
 
 WINDOW = "ROSVision Camera Calibrator"
@@ -44,6 +45,17 @@ FPS_PRESETS = [15, 30, 60, 90, 120]
 
 def clamp(value: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, value))
+
+
+def nearest_index(values: list[int], target: int) -> int:
+    return min(range(len(values)), key=lambda i: abs(values[i] - target))
+
+
+def nearest_resolution_index(target_w: int, target_h: int) -> int:
+    return min(
+        range(len(RESOLUTION_PRESETS)),
+        key=lambda i: abs(RESOLUTION_PRESETS[i][0] - target_w) + abs(RESOLUTION_PRESETS[i][1] - target_h),
+    )
 
 
 @dataclass
@@ -108,6 +120,13 @@ def save_yaml(path: Path, device: str, width: int, height: int, fps: int, values
     path.write_text("\n".join(yaml) + "\n", encoding="utf-8")
 
 
+def get_capture_settings(cap: cv2.VideoCapture) -> tuple[int, int, float]:
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps_actual = cap.get(cv2.CAP_PROP_FPS)
+    return width, height, fps_actual
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="ROSVision quick camera input calibration GUI")
     p.add_argument("--device", default="0", help="Camera index (e.g. 0) or path (e.g. /dev/video0)")
@@ -156,6 +175,7 @@ def main() -> int:
             0,
             1,
             0,
+            # OpenCV V4L2 uses 0.25 for manual mode and 0.75 for auto mode.
             apply_prop(cv2.CAP_PROP_AUTO_EXPOSURE, lambda v: 0.75 if v else 0.25),
             read_prop(cv2.CAP_PROP_AUTO_EXPOSURE, lambda v: 1 if v >= 0.5 else 0),
         ),
@@ -227,17 +247,16 @@ def main() -> int:
             lambda _v: None,
         )
 
-    current_fps_idx = min(range(len(FPS_PRESETS)), key=lambda i: abs(FPS_PRESETS[i] - initial_fps))
-    current_res_idx = min(
-        range(len(RESOLUTION_PRESETS)),
-        key=lambda i: abs(RESOLUTION_PRESETS[i][0] - initial_width) + abs(RESOLUTION_PRESETS[i][1] - initial_height),
-    )
-    cv2.createTrackbar("Resolution Preset", WINDOW, current_res_idx, len(RESOLUTION_PRESETS) - 1, lambda _v: None)
-    cv2.createTrackbar("FPS Preset", WINDOW, current_fps_idx, len(FPS_PRESETS) - 1, lambda _v: None)
+    initial_fps_idx = nearest_index(FPS_PRESETS, initial_fps)
+    initial_res_idx = nearest_resolution_index(initial_width, initial_height)
+    cv2.createTrackbar("Resolution Preset", WINDOW, initial_res_idx, len(RESOLUTION_PRESETS) - 1, lambda _v: None)
+    cv2.createTrackbar("FPS Preset", WINDOW, initial_fps_idx, len(FPS_PRESETS) - 1, lambda _v: None)
+    current_res_idx = initial_res_idx
+    current_fps_idx = initial_fps_idx
 
     status_text = f"Loaded persistent profile: {os.fspath(profile_path)}"
     applied_values: dict[str, int] = {}
-    last_saved_state: tuple | None = None
+    last_saved_state: tuple[int, int, int, tuple[tuple[str, int], ...]] | None = None
 
     while True:
         res_idx = cv2.getTrackbarPos("Resolution Preset", WINDOW)
@@ -263,13 +282,11 @@ def main() -> int:
         ok, frame = cap.read()
         if not ok:
             status_text = "Camera frame read failed"
-            if np is None:
-                break
-            frame = 255 * np.ones((480, 640, 3), dtype=np.uint8)
+            fallback_h = max(1, selected_height)
+            fallback_w = max(1, selected_width)
+            frame = np.ones((fallback_h, fallback_w, 3), dtype=np.uint8) * 255
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps_actual = cap.get(cv2.CAP_PROP_FPS)
+        width, height, fps_actual = get_capture_settings(cap)
         selected_width, selected_height = RESOLUTION_PRESETS[current_res_idx]
         selected_fps = FPS_PRESETS[current_fps_idx]
 
@@ -310,9 +327,8 @@ def main() -> int:
         if key in (27, ord("q")):
             break
         if key == ord("s"):
-            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = int(round(cap.get(cv2.CAP_PROP_FPS)))
+            width, height, fps_actual = get_capture_settings(cap)
+            fps = int(round(fps_actual))
             save_yaml(save_path, args.device, width, height, fps, applied_values)
             status_text = f"Saved YAML snapshot: {os.fspath(save_path)}"
 
